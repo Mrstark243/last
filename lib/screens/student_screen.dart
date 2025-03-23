@@ -10,10 +10,10 @@ class StudentScreen extends StatefulWidget {
 }
 
 class _StudentScreenState extends State<StudentScreen> {
-  final TextEditingController _ipController = TextEditingController();
   late SocketService _socketService;
   bool _isConnected = false;
   Uint8List? _currentImage;
+  final String _teacherIpAddress = '192.168.43.106';
 
   @override
   void initState() {
@@ -29,15 +29,17 @@ class _StudentScreenState extends State<StudentScreen> {
 
   Future<void> _toggleConnection() async {
     if (!_isConnected) {
-      final ip = _ipController.text.trim();
-      if (ip.isEmpty) {
-        _showError('Please enter teacher\'s IP address');
-        return;
-      }
-
-      if (await _socketService.connectToServer(ip)) {
-        setState(() => _isConnected = true);
-      } else {
+      try {
+        final success = await _socketService.connectToServer(_teacherIpAddress);
+        if (success) {
+          setState(() {
+            _isConnected = true;
+          });
+        } else {
+          _showError('Failed to connect to teacher');
+        }
+      } catch (e) {
+        print('Connection error: $e');
         _showError('Failed to connect to teacher');
       }
     } else {
@@ -57,7 +59,6 @@ class _StudentScreenState extends State<StudentScreen> {
 
   @override
   void dispose() {
-    _ipController.dispose();
     _socketService.disconnect();
     super.dispose();
   }
@@ -75,18 +76,6 @@ class _StudentScreenState extends State<StudentScreen> {
             padding: const EdgeInsets.all(16.0),
             child: Row(
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: _ipController,
-                    decoration: const InputDecoration(
-                      labelText: 'Teacher\'s IP Address',
-                      hintText: 'Enter IP address (e.g., 192.168.1.100)',
-                      border: OutlineInputBorder(),
-                    ),
-                    enabled: !_isConnected,
-                  ),
-                ),
-                const SizedBox(width: 16),
                 ElevatedButton.icon(
                   icon: Icon(_isConnected ? Icons.logout : Icons.login),
                   label: Text(_isConnected ? 'Disconnect' : 'Connect'),
@@ -114,12 +103,22 @@ class _StudentScreenState extends State<StudentScreen> {
                   ? Image.memory(
                       _currentImage!,
                       fit: BoxFit.contain,
+                      gaplessPlayback: true,
+                      filterQuality: FilterQuality.high,
+                      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                        if (wasSynchronouslyLoaded || frame != null) {
+                          return child;
+                        }
+                        return const Center(child: CircularProgressIndicator());
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Center(
+                          child: Text('Error loading image'),
+                        );
+                      },
                     )
                   : const Center(
-                      child: Text(
-                        'Waiting for teacher\'s screen...',
-                        style: TextStyle(fontSize: 18),
-                      ),
+                      child: Text('No screen sharing active'),
                     ),
             ),
           ),
@@ -127,4 +126,4 @@ class _StudentScreenState extends State<StudentScreen> {
       ),
     );
   }
-} 
+}

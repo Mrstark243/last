@@ -38,6 +38,9 @@ class _TeacherScreenState extends State<TeacherScreen> {
     if (!_isSharing) {
       if (await _screenCaptureService.requestPermissions()) {
         if (await _socketService.startServer()) {
+          // Wait for a moment to ensure server is fully started
+          await Future.delayed(const Duration(milliseconds: 500));
+          
           _screenCaptureService.startCapturing();
           setState(() => _isSharing = true);
         } else {
@@ -80,19 +83,34 @@ class _TeacherScreenState extends State<TeacherScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (_ipAddress != null) ...[
-                const Text(
+                Text(
                   'Your IP Address:',
                   style: TextStyle(fontSize: 18),
                 ),
                 SelectableText(
                   _ipAddress!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 20),
               ],
+              Expanded(
+                child: Container(
+                  color: Colors.grey[200], 
+                  child: Center(
+                    child: Text(
+                      _isSharing ? 'Screen Sharing Active' : 'Screen Sharing Area',
+                      style: TextStyle(
+                        fontSize: 20,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
               ElevatedButton.icon(
                 icon: Icon(_isSharing ? Icons.stop : Icons.play_arrow),
                 label: Text(_isSharing ? 'Stop Sharing' : 'Start Sharing'),
@@ -112,4 +130,4 @@ class _TeacherScreenState extends State<TeacherScreen> {
       ),
     );
   }
-} 
+}

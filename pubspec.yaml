@@ -10,14 +10,13 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
   cupertino_icons: ^1.0.8
-  web_socket_channel: ^2.4.4
-  network_info_plus: ^5.0.2
-  permission_handler: ^11.3.0
+  web_socket_channel: ^2.4.0
+  network_info_plus: ^4.0.0
+  permission_handler: ^11.0.1
   path_provider: ^2.1.2
   image: ^4.1.7
-  device_info_plus: ^9.1.2
+  device_info_plus: ^9.0.2
 
 dev_dependencies:
   flutter_test:
