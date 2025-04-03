@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'dart:io' show Platform;
@@ -7,131 +8,111 @@ import 'package:flutter/rendering.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/services.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 
 class ScreenCaptureService {
   Timer? _captureTimer;
-  final void Function(Uint8List) onScreenCaptured;
-  final GlobalKey _globalKey = GlobalKey();
+  final Function(Uint8List) onScreenCaptured;
+  final GlobalKey globalKey = GlobalKey();
   bool _isCapturing = false;
   bool _isFirstCapture = true;
   static const int _captureInterval = 100; // Set to 100ms for smoother updates
   static const int _debounceDuration = 50; // Set to 50ms for better responsiveness
   static const double _captureScale = 0.7; // Keep 70% scale for better quality
   static const MethodChannel _channel = MethodChannel('screen_capture_service');
-
   Timer? _debounceTimer;
-  final LayerLink _layerLink = LayerLink();
-
-  ScreenCaptureService({required this.onScreenCaptured});
-
+  int _lastCaptureTime = 0;
+  static const int _minCaptureInterval = 50; // Minimum time between captures in ms
+  bool _hasPermissions = false;
+  
+  // Platform channel for native screen capture
+  static const platform = MethodChannel('com.example.pro3/screen_capture');
+  
+  ScreenCaptureService({required this.onScreenCaptured}) {
+    // Initialize the platform channel
+    platform.setMethodCallHandler(_handleMethod);
+  }
+  
+  Future<dynamic> _handleMethod(MethodCall call) async {
+    switch (call.method) {
+      case 'onScreenCaptured':
+        final String imagePath = call.arguments['imagePath'];
+        final Uint8List imageBytes = await File(imagePath).readAsBytes();
+        onScreenCaptured(imageBytes);
+        // Clean up the temporary file
+        await File(imagePath).delete();
+        break;
+      default:
+        throw PlatformException(
+          code: 'Unimplemented',
+          details: 'Method ${call.method} not implemented',
+        );
+    }
+  }
+  
   Future<bool> requestPermissions() async {
-    try {
-      // Get Android version
-      final deviceInfo = DeviceInfoPlugin();
-      final androidInfo = await deviceInfo.androidInfo;
-      final sdkInt = androidInfo.version.sdkInt;
-
-      if (Platform.isAndroid) {
-        if (sdkInt >= 33) {
-          // Android 13+ permissions
-          final photos = await Permission.photos.request();
-          final videos = await Permission.videos.request();
-          final mediaLocation = await Permission.accessMediaLocation.request();
-
-          if (photos.isDenied || videos.isDenied || mediaLocation.isDenied) {
-            print('Media permissions denied for Android 13+');
-            return false;
-          }
-        } else {
-          // Below Android 13
-          final storage = await Permission.storage.request();
-          if (storage.isDenied) {
-            print('Storage permission denied');
-            return false;
-          }
-
-          // For Android 11+ (API 30+), request all files access
-          if (sdkInt >= 30) {
-            if (!await Permission.manageExternalStorage.isGranted) {
-              final status = await Permission.manageExternalStorage.request();
-              if (status.isDenied) {
-                print('Manage external storage permission denied');
-                return false;
-              }
-            }
-          }
-        }
-
-        // Request media projection permission through platform channel
+    if (Platform.isAndroid) {
+      // Request screen capture permission
+      final status = await Permission.storage.request();
+      _hasPermissions = status.isGranted;
+      
+      if (_hasPermissions) {
+        // Request media projection permission
         try {
-          final bool hasProjectionPermission = await _channel.invokeMethod('requestMediaProjection');
-          if (!hasProjectionPermission) {
-            print('Media projection permission denied');
-            return false;
-          }
+          final bool? result = await platform.invokeMethod('requestMediaProjection');
+          _hasPermissions = result ?? false;
         } catch (e) {
           print('Error requesting media projection: $e');
-          return false;
+          _hasPermissions = false;
         }
       }
-
-      return true;
-    } catch (e) {
-      print('Error requesting permissions: $e');
-      return false;
+    } else {
+      // For other platforms, just check storage permission
+      final status = await Permission.storage.request();
+      _hasPermissions = status.isGranted;
     }
+    
+    return _hasPermissions;
   }
-
+  
   void startCapturing() {
-    if (_isCapturing) return;
+    if (_isCapturing || !_hasPermissions) return;
     
-    _captureTimer?.cancel();
     _isCapturing = true;
-    _isFirstCapture = true;
     
-    _captureTimer = Timer.periodic(Duration(milliseconds: _captureInterval), (timer) async {
-      if (!_isCapturing) return;
-      
-      // Always capture the first time to ensure initial screen
-      if (_isFirstCapture) {
-        _isFirstCapture = false;
+    // Start native screen capture
+    platform.invokeMethod('startScreenCapture');
+    
+    // Set up a timer to request captures at regular intervals
+    _captureTimer = Timer.periodic(Duration(milliseconds: _captureInterval), (timer) {
+      if (_isCapturing) {
         _captureScreen();
-        return;
       }
-      
-      // Debounce the capture to prevent excessive captures
-      if (_debounceTimer?.isActive ?? false) return;
-      
-      _debounceTimer = Timer(Duration(milliseconds: _debounceDuration), () async {
-        try {
-          _captureScreen();
-        } catch (e) {
-          print('Error capturing screen: $e');
-        }
-        _debounceTimer = null;
-      });
     });
   }
-
+  
+  void stopCapturing() {
+    _isCapturing = false;
+    _captureTimer?.cancel();
+    _captureTimer = null;
+    
+    // Stop native screen capture
+    platform.invokeMethod('stopScreenCapture');
+  }
+  
   Future<void> _captureScreen() async {
-    final boundary = _globalKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-    if (boundary != null) {
-      final image = await boundary.toImage(pixelRatio: _captureScale);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData != null) {
-        onScreenCaptured(byteData.buffer.asUint8List());
-      }
+    if (!_isCapturing) return;
+    
+    try {
+      // Request a screen capture from the native side
+      await platform.invokeMethod('captureScreen');
+    } catch (e) {
+      print('Error capturing screen: $e');
     }
   }
-
-  void stopCapturing() {
-    _captureTimer?.cancel();
-    _debounceTimer?.cancel();
-    _captureTimer = null;
-    _debounceTimer = null;
-    _isCapturing = false;
-    _isFirstCapture = true;
+  
+  void dispose() {
+    stopCapturing();
   }
-
-  GlobalKey get globalKey => _globalKey;
 }
