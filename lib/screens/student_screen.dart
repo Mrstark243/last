@@ -20,29 +20,29 @@ class _StudentScreenState extends State<StudentScreen> {
   Timer? _reconnectTimer;
   bool _isReconnecting = false;
   List<int> _buffer = [];
-  
+
   @override
   void initState() {
     super.initState();
-    _connectToServer();
+    // 🛑 Removed automatic connection from here
   }
-  
+
   Future<void> _connectToServer() async {
     if (_isReconnecting) return;
-    
+
     try {
       setState(() {
         _status = 'Connecting...';
         _isReconnecting = true;
       });
-      
-      _socket = await Socket.connect('192.168.34.144', 5000);
+
+      _socket = await Socket.connect('192.168.21.121', 5000);
       setState(() {
         _isConnected = true;
         _status = 'Connected';
         _isReconnecting = false;
       });
-      
+
       _listenForScreenCaptures();
     } catch (e) {
       print('Connection error: $e');
@@ -54,46 +54,39 @@ class _StudentScreenState extends State<StudentScreen> {
       _scheduleReconnect();
     }
   }
-  
+
   void _listenForScreenCaptures() {
     _socket?.listen(
       (List<int> data) async {
         try {
-          // Add new data to buffer
           _buffer.addAll(data);
-          
-          // Process complete messages from buffer
+
           while (_buffer.length >= 4) {
-            // Read image size (first 4 bytes)
-            final ByteData byteData = ByteData.view(Uint8List.fromList(_buffer).buffer);
+            final ByteData byteData =
+                ByteData.view(Uint8List.fromList(_buffer).buffer);
             final int imageSize = byteData.getInt32(0, Endian.big);
-            
-            // Check if we have enough data for the complete image
-            if (imageSize <= 0 || imageSize > 10 * 1024 * 1024) { // Max 10MB
+
+            if (imageSize <= 0 || imageSize > 10 * 1024 * 1024) {
               print('Invalid image size: $imageSize');
               _buffer.clear();
               return;
             }
-            
+
             final int totalSize = 4 + imageSize;
             if (_buffer.length < totalSize) {
-              // Wait for more data
               return;
             }
-            
-            // Extract image data
-            final Uint8List imageData = Uint8List.fromList(_buffer.sublist(4, totalSize));
-            
-            // Remove processed data from buffer
+
+            final Uint8List imageData =
+                Uint8List.fromList(_buffer.sublist(4, totalSize));
             _buffer.removeRange(0, totalSize);
-            
-            // Decode and display image
+
             final image = img.decodeImage(imageData);
             if (image != null) {
               final bytes = await img.encodePng(image);
               final codec = await ui.instantiateImageCodec(bytes);
               final frame = await codec.getNextFrame();
-              
+
               if (mounted) {
                 setState(() {
                   _screenImage = frame.image;
@@ -116,18 +109,18 @@ class _StudentScreenState extends State<StudentScreen> {
       },
     );
   }
-  
+
   void _handleDisconnect() {
     if (!mounted) return;
-    
+
     setState(() {
       _isConnected = false;
       _status = 'Disconnected';
     });
-    
+
     _scheduleReconnect();
   }
-  
+
   void _scheduleReconnect() {
     _reconnectTimer?.cancel();
     _reconnectTimer = Timer(const Duration(seconds: 5), () {
@@ -136,14 +129,14 @@ class _StudentScreenState extends State<StudentScreen> {
       }
     });
   }
-  
+
   @override
   void dispose() {
     _reconnectTimer?.cancel();
     _socket?.close();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -164,12 +157,23 @@ class _StudentScreenState extends State<StudentScreen> {
               _status,
               style: TextStyle(
                 color: _isConnected ? Colors.green : Colors.red,
+                fontSize: 16,
               ),
             ),
           ),
+          if (!_isConnected)
+            ElevatedButton(
+              onPressed: _connectToServer,
+              child: Text("Connect to Teacher"),
+              style: ElevatedButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                textStyle: const TextStyle(fontSize: 18),
+              ),
+            ),
           Expanded(
             child: _screenImage == null
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(child: Text("No screen shared yet."))
                 : RawImage(
                     image: _screenImage,
                     fit: BoxFit.contain,

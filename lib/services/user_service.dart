@@ -1,13 +1,24 @@
-class User {
-  String username;
-  String password;
-  String role;
+import '../db/database_helper.dart';
+import '../models/user_model.dart';
 
-  User({required this.username, required this.password, required this.role});
-}
+class UserService {
+  final DatabaseHelper _dbHelper = DatabaseHelper();
 
-List<User> users = []; // In-memory storage for users
+  // Register user
+  Future<String?> registerUser(User user) async {
+    // Check if email already exists
+    bool exists = await _dbHelper.emailExists(user.email);
+    if (exists) {
+      return "Email already exists";
+    }
 
-void registerUser(String username, String password, String role) {
-  users.add(User(username: username, password: password, role: role));
+    // Insert user
+    await _dbHelper.insertUser(user);
+    return null; // null means success
+  }
+
+  // Login user
+  Future<User?> loginUser(String email, String password) async {
+    return await _dbHelper.getUserByEmailAndPassword(email, password);
+  }
 }
