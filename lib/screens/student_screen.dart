@@ -1,9 +1,14 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 import 'dart:ui' as ui;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
+import '../widgets/note_viewer_widget.dart';
+import '../models/note_model.dart';
 
 class StudentScreen extends StatefulWidget {
   const StudentScreen({super.key});
@@ -20,11 +25,12 @@ class _StudentScreenState extends State<StudentScreen> {
   Timer? _reconnectTimer;
   bool _isReconnecting = false;
   List<int> _buffer = [];
+  List<Map<String, dynamic>> _receivedNotes = [];
 
   @override
   void initState() {
     super.initState();
-    // 🛑 Removed automatic connection from here
+    _loadSavedNotes();
   }
 
   Future<void> _connectToServer() async {
@@ -36,16 +42,15 @@ class _StudentScreenState extends State<StudentScreen> {
         _isReconnecting = true;
       });
 
-      _socket = await Socket.connect('192.168.192.121', 5000);
+      _socket = await Socket.connect('192.168.43.251', 5000);
       setState(() {
         _isConnected = true;
         _status = 'Connected';
         _isReconnecting = false;
       });
 
-      _listenForScreenCaptures();
+      _listenToServer();
     } catch (e) {
-      print('Connection error: $e');
       setState(() {
         _status = 'Connection failed: $e';
         _isConnected = false;
@@ -55,48 +60,13 @@ class _StudentScreenState extends State<StudentScreen> {
     }
   }
 
-  void _listenForScreenCaptures() {
+  void _listenToServer() {
     _socket?.listen(
-      (List<int> data) async {
-        try {
-          _buffer.addAll(data);
-
-          while (_buffer.length >= 4) {
-            final ByteData byteData =
-                ByteData.view(Uint8List.fromList(_buffer).buffer);
-            final int imageSize = byteData.getInt32(0, Endian.big);
-
-            if (imageSize <= 0 || imageSize > 10 * 1024 * 1024) {
-              print('Invalid image size: $imageSize');
-              _buffer.clear();
-              return;
-            }
-
-            final int totalSize = 4 + imageSize;
-            if (_buffer.length < totalSize) {
-              return;
-            }
-
-            final Uint8List imageData =
-                Uint8List.fromList(_buffer.sublist(4, totalSize));
-            _buffer.removeRange(0, totalSize);
-
-            final image = img.decodeImage(imageData);
-            if (image != null) {
-              final bytes = await img.encodePng(image);
-              final codec = await ui.instantiateImageCodec(bytes);
-              final frame = await codec.getNextFrame();
-
-              if (mounted) {
-                setState(() {
-                  _screenImage = frame.image;
-                });
-              }
-            }
-          }
-        } catch (e) {
-          print('Error processing screen capture: $e');
-          _buffer.clear();
+      (data) async {
+        if (_isNoteData(data)) {
+          _handleNoteData(data);
+        } else {
+          _handleScreenImageData(data);
         }
       },
       onError: (error) {
@@ -108,6 +78,74 @@ class _StudentScreenState extends State<StudentScreen> {
         _handleDisconnect();
       },
     );
+  }
+
+  bool _isNoteData(List<int> data) {
+    try {
+      final decodedString = utf8.decode(data);
+      return decodedString.contains('"type":"note"');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void _handleNoteData(List<int> data) async {
+    try {
+      final decoded = jsonDecode(utf8.decode(data));
+      if (decoded['type'] == 'note') {
+        final fileName = decoded['fileName'];
+        final fileBytes = base64Decode(decoded['fileBytes']);
+
+        final dir = await getApplicationDocumentsDirectory();
+        final file = File('${dir.path}/$fileName');
+        await file.writeAsBytes(fileBytes);
+
+        setState(() {
+          _receivedNotes.add({'name': fileName, 'path': file.path});
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Received and saved note: $fileName')),
+        );
+      }
+    } catch (e) {
+      print('Failed to decode note: $e');
+    }
+  }
+
+  void _handleScreenImageData(List<int> data) async {
+    _buffer.addAll(data);
+    while (_buffer.length >= 4) {
+      final ByteData byteData =
+          ByteData.view(Uint8List.fromList(_buffer).buffer);
+      final int imageSize = byteData.getInt32(0, Endian.big);
+
+      if (imageSize <= 0 || imageSize > 10 * 1024 * 1024) {
+        print('Invalid image size: $imageSize');
+        _buffer.clear();
+        return;
+      }
+
+      final int totalSize = 4 + imageSize;
+      if (_buffer.length < totalSize) return;
+
+      final Uint8List imageData =
+          Uint8List.fromList(_buffer.sublist(4, totalSize));
+      _buffer.removeRange(0, totalSize);
+
+      final image = img.decodeImage(imageData);
+      if (image != null) {
+        final bytes = await img.encodePng(image);
+        final codec = await ui.instantiateImageCodec(bytes);
+        final frame = await codec.getNextFrame();
+
+        if (mounted) {
+          setState(() {
+            _screenImage = frame.image;
+          });
+        }
+      }
+    }
   }
 
   void _handleDisconnect() {
@@ -127,6 +165,21 @@ class _StudentScreenState extends State<StudentScreen> {
       if (mounted && !_isConnected && !_isReconnecting) {
         _connectToServer();
       }
+    });
+  }
+
+  Future<void> _loadSavedNotes() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final files = dir.listSync();
+    final notes = files.whereType<File>().where((file) {
+      final name = file.path.split('/').last.toLowerCase();
+      return name.endsWith('.pdf') || name.endsWith('.txt');
+    }).map((file) {
+      return {'name': file.path.split('/').last, 'path': file.path};
+    }).toList();
+
+    setState(() {
+      _receivedNotes = notes;
     });
   }
 
@@ -169,23 +222,36 @@ class _StudentScreenState extends State<StudentScreen> {
               onPressed: _connectToServer,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF7C4DFF),
-                foregroundColor: Colors.white, // 👈 Makes text white
+                foregroundColor: Colors.white,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 textStyle: const TextStyle(fontSize: 18),
               ),
               child: const Text("Connect to Teacher"),
             ),
+          if (_receivedNotes.isNotEmpty)
+            Expanded(
+              flex: 1,
+              child: NoteViewerWidget(
+                notes: _receivedNotes
+                    .map((note) => NoteModel(
+                          title: note['name'],
+                          filePath: note['path'],
+                          receivedAt: File(note['path']).lastModifiedSync(),
+                        ))
+                    .toList(),
+              ),
+            ),
           Expanded(
+            flex: 2,
             child: _screenImage == null
                 ? const Center(child: Text("No screen shared yet."))
                 : Container(
-                    color: Colors.black, // Optional: gives nice contrast
+                    color: Colors.black,
                     alignment: Alignment.center,
                     child: RawImage(
                       image: _screenImage,
-                      fit: BoxFit
-                          .contain, // Use BoxFit.cover for more aggressive filling
+                      fit: BoxFit.contain,
                       alignment: Alignment.center,
                     ),
                   ),

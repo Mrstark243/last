@@ -20,6 +20,12 @@ dependencies:
   path: ^1.8.3
   screen_brightness: ^0.2.2
   sqflite: ^2.3.2+1
+  file_selector: ^1.0.3
+  open_file: ^3.2.1
+
+
+
+
 
 dev_dependencies:
   flutter_test:
