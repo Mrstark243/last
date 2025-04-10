@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/user_model.dart';
+import '../models/attendance_model.dart'; // Import attendance model
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -32,9 +33,20 @@ class DatabaseHelper {
             subject TEXT
           )
         ''');
+
+        await db.execute('''
+          CREATE TABLE attendance (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            roll_number TEXT,
+            date TEXT
+          )
+        ''');
       },
     );
   }
+
+  // ------------------ User Auth ------------------
 
   Future<int> insertUser(User user) async {
     final db = await database;
@@ -58,5 +70,29 @@ class DatabaseHelper {
     final db = await database;
     final res = await db.query('users', where: 'email = ?', whereArgs: [email]);
     return res.isNotEmpty;
+  }
+
+  // ------------------ Attendance ------------------
+
+  Future<void> insertAttendance(Attendance attendance) async {
+    final db = await database;
+    await db.insert('attendance', attendance.toMap());
+  }
+
+  Future<List<Attendance>> getAttendanceByDate(String date) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'attendance',
+      where: 'date = ?',
+      whereArgs: [date],
+    );
+    return maps.map((map) => Attendance.fromMap(map)).toList();
+  }
+
+  Future<List<String>> getAllAttendanceDates() async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db
+        .rawQuery('SELECT DISTINCT date FROM attendance ORDER BY date DESC');
+    return maps.map((map) => map['date'] as String).toList();
   }
 }

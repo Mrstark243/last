@@ -7,6 +7,8 @@ import 'package:pro3/services/socket_service.dart';
 import 'package:pro3/services/screen_capture_service.dart';
 import 'package:pro3/services/foreground_service.dart';
 import 'package:file_selector/file_selector.dart';
+import 'package:pro3/screens/connected_students_sheet.dart';
+import 'package:pro3/screens/attendance_list_screen.dart';
 
 class TeacherScreen extends StatefulWidget {
   const TeacherScreen({super.key});
@@ -23,6 +25,12 @@ class _TeacherScreenState extends State<TeacherScreen> {
   String _status = 'Not started';
 
   static const platform = MethodChannel('com.example.pro3/screen_capture');
+
+  // Dummy connected students list (replace with actual data from UDP/WebSocket)
+  final List<Map<String, String>> connectedStudents = [
+    {'name': 'Alice', 'roll': '101'},
+    {'name': 'Bob', 'roll': '102'},
+  ];
 
   @override
   void initState() {
@@ -108,6 +116,24 @@ class _TeacherScreenState extends State<TeacherScreen> {
     }
   }
 
+  void _openConnectedStudentsSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ConnectedStudentsSheet(
+        connectedStudents: connectedStudents,
+      ),
+    );
+  }
+
+  void _navigateToAttendanceList() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => AttendanceListScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -115,26 +141,40 @@ class _TeacherScreenState extends State<TeacherScreen> {
         title: const Text('Teacher Screen'),
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(_status,
-                style:
-                    TextStyle(color: _isCapturing ? Colors.green : Colors.red)),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              icon: Icon(_isCapturing ? Icons.stop : Icons.play_arrow),
-              label: Text(_isCapturing ? 'Stop Capture' : 'Start Capture'),
-              onPressed:
-                  _isCapturing ? _stopScreenCapture : _startScreenCapture,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.upload_file),
-              label: const Text('Upload Note'),
-              onPressed: _uploadNote,
-            ),
-          ],
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(_status,
+                  style: TextStyle(
+                      color: _isCapturing ? Colors.green : Colors.red)),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                icon: Icon(_isCapturing ? Icons.stop : Icons.play_arrow),
+                label: Text(_isCapturing ? 'Stop Capture' : 'Start Capture'),
+                onPressed:
+                    _isCapturing ? _stopScreenCapture : _startScreenCapture,
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.upload_file),
+                label: const Text('Upload Note'),
+                onPressed: _uploadNote,
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.people),
+                label: const Text('View Connected Students'),
+                onPressed: _openConnectedStudentsSheet,
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.list),
+                label: const Text('View Attendance'),
+                onPressed: _navigateToAttendanceList,
+              ),
+            ],
+          ),
         ),
       ),
     );
