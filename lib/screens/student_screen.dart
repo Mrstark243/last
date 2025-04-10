@@ -36,7 +36,7 @@ class _StudentScreenState extends State<StudentScreen> {
         _isReconnecting = true;
       });
 
-      _socket = await Socket.connect('192.168.21.121', 5000);
+      _socket = await Socket.connect('192.168.192.121', 5000);
       setState(() {
         _isConnected = true;
         _status = 'Connected';
@@ -140,8 +140,11 @@ class _StudentScreenState extends State<StudentScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF3F2FF),
       appBar: AppBar(
         title: const Text('Student View'),
+        backgroundColor: const Color(0xFF7C4DFF),
+        foregroundColor: Colors.white,
         actions: [
           IconButton(
             icon: Icon(_isConnected ? Icons.wifi : Icons.wifi_off),
@@ -164,19 +167,27 @@ class _StudentScreenState extends State<StudentScreen> {
           if (!_isConnected)
             ElevatedButton(
               onPressed: _connectToServer,
-              child: Text("Connect to Teacher"),
               style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF7C4DFF),
+                foregroundColor: Colors.white, // 👈 Makes text white
                 padding:
                     const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 textStyle: const TextStyle(fontSize: 18),
               ),
+              child: const Text("Connect to Teacher"),
             ),
           Expanded(
             child: _screenImage == null
                 ? const Center(child: Text("No screen shared yet."))
-                : RawImage(
-                    image: _screenImage,
-                    fit: BoxFit.contain,
+                : Container(
+                    color: Colors.black, // Optional: gives nice contrast
+                    alignment: Alignment.center,
+                    child: RawImage(
+                      image: _screenImage,
+                      fit: BoxFit
+                          .contain, // Use BoxFit.cover for more aggressive filling
+                      alignment: Alignment.center,
+                    ),
                   ),
           ),
         ],
