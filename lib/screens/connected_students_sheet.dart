@@ -8,7 +8,7 @@ class ConnectedStudentsSheet extends StatelessWidget {
   final List<Map<String, String>>
       connectedStudents; // [{'name': 'John', 'roll': '101'}]
 
-  ConnectedStudentsSheet({required this.connectedStudents});
+  const ConnectedStudentsSheet({super.key, required this.connectedStudents});
 
   void _markAttendance(BuildContext context) async {
     final service = AttendanceService();
@@ -35,14 +35,14 @@ class ConnectedStudentsSheet extends StatelessWidget {
     return DraggableScrollableSheet(
       initialChildSize: 0.6,
       builder: (context, scrollController) => Container(
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
+        padding: const EdgeInsets.all(16),
+        decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
           children: [
-            Text("Connected Students",
+            const Text("Connected Students",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             Expanded(
               child: ListView.builder(
@@ -51,7 +51,7 @@ class ConnectedStudentsSheet extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final student = connectedStudents[index];
                   return ListTile(
-                    leading: Icon(Icons.person),
+                    leading: const Icon(Icons.person),
                     title: Text(student['name'] ?? ''),
                     subtitle: Text("Roll No: ${student['roll'] ?? ''}"),
                   );
@@ -60,7 +60,7 @@ class ConnectedStudentsSheet extends StatelessWidget {
             ),
             ElevatedButton(
               onPressed: () => _markAttendance(context),
-              child: Text("Mark Attendance"),
+              child: const Text("Mark Attendance"),
             )
           ],
         ),

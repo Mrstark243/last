@@ -25,7 +25,7 @@ class SocketService {
   Timer? _heartbeatTimer;
   Timer? _reconnectTimer;
   int _reconnectAttempts = 0;
-  bool _isCapturing = false;
+  final bool _isCapturing = false;
   Timer? _captureTimer;
 
   final _imageController = StreamController<Uint8List>.broadcast();

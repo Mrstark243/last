@@ -4,6 +4,8 @@ import '../models/attendance_model.dart';
 import '../services/attendance_service.dart';
 
 class AttendanceListScreen extends StatefulWidget {
+  const AttendanceListScreen({super.key});
+
   @override
   _AttendanceListScreenState createState() => _AttendanceListScreenState();
 }
@@ -40,7 +42,7 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("View Attendance")),
+      appBar: AppBar(title: const Text("View Attendance")),
       body: Column(
         children: [
           Padding(
@@ -48,7 +50,7 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
             child: DropdownButton<String>(
               value: selectedDate,
               isExpanded: true,
-              hint: Text("Select Date"),
+              hint: const Text("Select Date"),
               items: dates
                   .map((d) => DropdownMenuItem(value: d, child: Text(d)))
                   .toList(),
@@ -68,7 +70,7 @@ class _AttendanceListScreenState extends State<AttendanceListScreen> {
               itemBuilder: (context, index) {
                 final att = attendanceList[index];
                 return ListTile(
-                  leading: Icon(Icons.person),
+                  leading: const Icon(Icons.person),
                   title: Text(att.name),
                   subtitle: Text("Roll No: ${att.rollNumber}"),
                 );

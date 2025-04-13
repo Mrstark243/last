@@ -24,7 +24,7 @@ class _StudentScreenState extends State<StudentScreen> {
   ui.Image? _screenImage;
   Timer? _reconnectTimer;
   bool _isReconnecting = false;
-  List<int> _buffer = [];
+  final List<int> _buffer = [];
   List<Map<String, dynamic>> _receivedNotes = [];
 
   @override
@@ -135,7 +135,7 @@ class _StudentScreenState extends State<StudentScreen> {
 
       final image = img.decodeImage(imageData);
       if (image != null) {
-        final bytes = await img.encodePng(image);
+        final bytes = img.encodePng(image);
         final codec = await ui.instantiateImageCodec(bytes);
         final frame = await codec.getNextFrame();
 

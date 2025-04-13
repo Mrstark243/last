@@ -4,6 +4,8 @@ import '../services/user_service.dart';
 import 'login_screen.dart';
 
 class StudentRegistrationScreen extends StatefulWidget {
+  const StudentRegistrationScreen({super.key});
+
   @override
   _StudentRegistrationScreenState createState() =>
       _StudentRegistrationScreenState();
@@ -50,7 +52,7 @@ class _StudentRegistrationScreenState extends State<StudentRegistrationScreen> {
     return InputDecoration(
       labelText: label,
       labelStyle: const TextStyle(color: Colors.white),
-      prefixIcon: Icon(icon, color: Color(0xFF7C4DFF)),
+      prefixIcon: Icon(icon, color: const Color(0xFF7C4DFF)),
       filled: true,
       fillColor: Colors.black,
       enabledBorder: OutlineInputBorder(

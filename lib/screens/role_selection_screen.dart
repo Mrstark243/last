@@ -3,6 +3,8 @@ import 'student_registration_screen.dart';
 import 'teacher_registration_screen.dart';
 
 class RoleSelectionScreen extends StatelessWidget {
+  const RoleSelectionScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

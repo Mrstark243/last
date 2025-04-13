@@ -6,6 +6,8 @@ import 'teacher_screen.dart';
 import 'role_selection_screen.dart';
 
 class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
   @override
   _LoginScreenState createState() => _LoginScreenState();
 }

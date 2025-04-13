@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 
 class ForegroundService {
@@ -38,4 +37,4 @@ class ForegroundService {
   }
 
   static bool get isRunning => _isRunning;
-} 
+}

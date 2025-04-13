@@ -1,14 +1,14 @@
 import 'dart:async';
-import 'dart:typed_data';
-import 'dart:ui' as ui;
+//import 'dart:typed_data';
+//import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:pro3/services/socket_service.dart';
-import 'package:pro3/services/screen_capture_service.dart';
-import 'package:pro3/services/foreground_service.dart';
+import 'package:EduShare/services/socket_service.dart';
+import 'package:EduShare/services/screen_capture_service.dart';
+import 'package:EduShare/services/foreground_service.dart';
 import 'package:file_selector/file_selector.dart';
-import 'package:pro3/screens/connected_students_sheet.dart';
-import 'package:pro3/screens/attendance_list_screen.dart';
+import 'package:EduShare/screens/connected_students_sheet.dart';
+import 'package:EduShare/screens/attendance_list_screen.dart';
 
 class TeacherScreen extends StatefulWidget {
   const TeacherScreen({super.key});
@@ -110,7 +110,7 @@ class _TeacherScreenState extends State<TeacherScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Note "$fileName" sent to students'),
-          duration: Duration(seconds: 2),
+          duration: const Duration(seconds: 2),
         ),
       );
     }
